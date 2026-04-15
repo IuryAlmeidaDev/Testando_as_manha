@@ -5,6 +5,7 @@
 #include <fstream>
 #include <wx/filedlg.h>
 #include <wx/msgdlg.h>
+#include <wx/clipbrd.h>
 
 wxBEGIN_EVENT_TABLE(MainFrame, wxFrame)
     EVT_COMBOBOX(1001, MainFrame::onProcessSelected)
@@ -71,7 +72,15 @@ MainFrame::MainFrame(const wxString& title)
     
     populateProcessList();
     
-    SetAcceleratorTable(wxAcceleratorTable());
+    wxAcceleratorEntry entries[6];
+    entries[0].Set(wxACCEL_CTRL, (int)'F', 1003);
+    entries[1].Set(wxACCEL_CTRL, (int)'N', 1004);
+    entries[2].Set(wxACCEL_CTRL, (int)'R', 1005);
+    entries[3].Set(wxACCEL_CTRL, (int)'W', 1014);
+    entries[4].Set(wxACCEL_CTRL, (int)'C', 1013);
+    entries[5].Set(wxACCEL_CTRL, (int)'S', 1011);
+    wxAcceleratorTable accel(6, entries);
+    SetAcceleratorTable(accel);
 }
 
 MainFrame::~MainFrame() {
