@@ -1,0 +1,9 @@
+build/
+.vcpkg/
+*.exe
+*.dll
+*.obj
+*.o
+*.pdb
+*.ilk
+*.exp
