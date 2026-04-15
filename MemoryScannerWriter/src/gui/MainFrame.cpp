@@ -41,6 +41,13 @@ wxBEGIN_EVENT_TABLE(MainFrame, wxFrame)
     EVT_BUTTON(1031, MainFrame::onAllocateMemory)
     EVT_BUTTON(1032, MainFrame::onFreeMemory)
     EVT_BUTTON(1033, MainFrame::onRefreshPEB)
+    EVT_BUTTON(1100, MainFrame::onDetectDebuggers)
+    EVT_BUTTON(1101, MainFrame::onPatchAntiDebug)
+    EVT_BUTTON(1102, MainFrame::onDetectHooks)
+    EVT_BUTTON(1103, MainFrame::onAnalyzeHeaps)
+    EVT_BUTTON(1104, MainFrame::onProcessHollow)
+    EVT_BUTTON(1105, MainFrame::onExecuteShellcode)
+    EVT_BUTTON(1106, MainFrame::onTraceSyscalls)
 wxEND_EVENT_TABLE()
 
 MainFrame::MainFrame(const wxString& title)
@@ -89,6 +96,10 @@ MainFrame::MainFrame(const wxString& title)
     wxPanel* toolsPanel = new wxPanel(m_notebook, wxID_ANY);
     createToolsTab(toolsPanel);
     m_notebook->AddPage(toolsPanel, "Tools");
+    
+    wxPanel* advancedPanel = new wxPanel(m_notebook, wxID_ANY);
+    createAdvancedTab(advancedPanel);
+    m_notebook->AddPage(advancedPanel, "Advanced");
     
     wxPanel* settingsPanel = new wxPanel(m_notebook, wxID_ANY);
     createSettingsTab(settingsPanel);
@@ -464,6 +475,191 @@ void MainFrame::createToolsTab(wxPanel* parent) {
     sizer->Add(debugSizer, 0, wxEXPAND | wxALL, 5);
     
     parent->SetSizer(sizer);
+}
+
+void MainFrame::createAdvancedTab(wxPanel* parent) {
+    wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
+    
+    wxNotebook* advNotebook = new wxNotebook(parent, wxID_ANY);
+    mainSizer->Add(advNotebook, 1, wxEXPAND | wxALL, 5);
+    
+    wxPanel* debuggerPanel = new wxPanel(advNotebook, wxID_ANY);
+    wxBoxSizer* dbgSizer = new wxBoxSizer(wxVERTICAL);
+    
+    wxStaticBox* dbgDetectBox = new wxStaticBox(debuggerPanel, wxID_ANY, "Debugger Detection");
+    wxStaticBoxSizer* dbgDetectSizer = new wxStaticBoxSizer(dbgDetectBox, wxVERTICAL);
+    
+    wxStaticText* dbgInfo = new wxStaticText(debuggerPanel, wxID_ANY,
+        "Detecta se ha debuggers conectados ao processo atual usando multiplos metodos:\n"
+        "- IsDebuggerPresent, CheckRemoteDebuggerPresent\n"
+        "- NtQueryInformationProcess (DebugPort, DebugObjectHandle, DebugFlags)\n"
+        "- PEB.BeingDebugged, Heap Flags, Timing checks\n"
+        "- Window class detection (OllyDbg, IDA, x64dbg)");
+    dbgDetectSizer->Add(dbgInfo, 0, wxALL, 5);
+    
+    wxBoxSizer* dbgBtnSizer = new wxBoxSizer(wxHORIZONTAL);
+    m_detectDebuggersBtn = new wxButton(debuggerPanel, 1100, "Detect Debuggers");
+    m_patchAntiDebugBtn = new wxButton(debuggerPanel, 1101, "Patch Anti-Debug");
+    dbgBtnSizer->Add(m_detectDebuggersBtn, 0, wxRIGHT, 5);
+    dbgBtnSizer->Add(m_patchAntiDebugBtn, 0);
+    dbgDetectSizer->Add(dbgBtnSizer, 0, wxALL, 5);
+    
+    m_debuggerList = new wxListView(debuggerPanel, wxID_ANY, wxDefaultPosition, wxSize(-1, 150),
+        wxLC_REPORT | wxLC_SINGLE_SEL);
+    m_debuggerList->InsertColumn(0, "Method", wxLIST_FORMAT_LEFT, 200);
+    m_debuggerList->InsertColumn(1, "Detected", wxLIST_FORMAT_CENTER, 80);
+    m_debuggerList->InsertColumn(2, "Details", wxLIST_FORMAT_LEFT, 400);
+    dbgDetectSizer->Add(m_debuggerList, 1, wxEXPAND | wxALL, 5);
+    
+    dbgSizer->Add(dbgDetectSizer, 1, wxEXPAND | wxALL, 5);
+    debuggerPanel->SetSizer(dbgSizer);
+    advNotebook->AddPage(debuggerPanel, "Debugger");
+    
+    wxPanel* hooksPanel = new wxPanel(advNotebook, wxID_ANY);
+    wxBoxSizer* hookSizer = new wxBoxSizer(wxVERTICAL);
+    
+    wxStaticBox* hookBox = new wxStaticBox(hooksPanel, wxID_ANY, "Hooking Detection");
+    wxStaticBoxSizer* hookBoxSizer = new wxStaticBoxSizer(hookBox, wxVERTICAL);
+    
+    wxStaticText* hookInfo = new wxStaticText(hooksPanel, wxID_ANY,
+        "IAT Hooks: Detecta hooks na Import Address Table comparando enderecos\n"
+        "Inline Hooks: Detecta JMP/CALL inline no codigo executavel\n\n"
+        "Use para identificar DLLs injetadas ou code hooks no processo.");
+    hookBoxSizer->Add(hookInfo, 0, wxALL, 5);
+    
+    m_detectHooksBtn = new wxButton(hooksPanel, 1102, "Detect All Hooks");
+    hookBoxSizer->Add(m_detectHooksBtn, 0, wxALL, 5);
+    
+    m_hookList = new wxListView(hooksPanel, wxID_ANY, wxDefaultPosition, wxSize(-1, 200),
+        wxLC_REPORT | wxLC_SINGLE_SEL);
+    m_hookList->InsertColumn(0, "Module", wxLIST_FORMAT_LEFT, 120);
+    m_hookList->InsertColumn(1, "Function", wxLIST_FORMAT_LEFT, 150);
+    m_hookList->InsertColumn(2, "Type", wxLIST_FORMAT_LEFT, 100);
+    m_hookList->InsertColumn(3, "Original", wxLIST_FORMAT_LEFT, 120);
+    m_hookList->InsertColumn(4, "Hooked", wxLIST_FORMAT_LEFT, 120);
+    m_hookList->InsertColumn(5, "Details", wxLIST_FORMAT_LEFT, 250);
+    hookBoxSizer->Add(m_hookList, 1, wxEXPAND | wxALL, 5);
+    
+    hookSizer->Add(hookBoxSizer, 1, wxEXPAND | wxALL, 5);
+    hooksPanel->SetSizer(hookSizer);
+    advNotebook->AddPage(hooksPanel, "Hooks");
+    
+    wxPanel* heapPanel = new wxPanel(advNotebook, wxID_ANY);
+    wxBoxSizer* heapSizer = new wxBoxSizer(wxVERTICAL);
+    
+    wxStaticBox* heapBox = new wxStaticBox(heapPanel, wxID_ANY, "Heap Analysis");
+    wxStaticBoxSizer* heapBoxSizer = new wxStaticBoxSizer(heapBox, wxVERTICAL);
+    
+    wxStaticText* heapInfo = new wxStaticText(heapPanel, wxID_ANY,
+        "Analisa heap do processo para detectar corrupcao ou anomalias.\n"
+        "Mostra informacoes sobre blocos de heap, tamanhos e estados.");
+    heapBoxSizer->Add(heapInfo, 0, wxALL, 5);
+    
+    m_analyzeHeapsBtn = new wxButton(heapPanel, 1103, "Analyze Heaps");
+    heapBoxSizer->Add(m_analyzeHeapsBtn, 0, wxALL, 5);
+    
+    m_heapList = new wxListView(heapPanel, wxID_ANY, wxDefaultPosition, wxSize(-1, 200),
+        wxLC_REPORT | wxLC_SINGLE_SEL);
+    m_heapList->InsertColumn(0, "Address", wxLIST_FORMAT_LEFT, 120);
+    m_heapList->InsertColumn(1, "Size", wxLIST_FORMAT_LEFT, 100);
+    m_heapList->InsertColumn(2, "Busy", wxLIST_FORMAT_CENTER, 60);
+    m_heapList->InsertColumn(3, "Extra Info", wxLIST_FORMAT_LEFT, 100);
+    m_heapList->InsertColumn(4, "Segment", wxLIST_FORMAT_LEFT, 150);
+    heapBoxSizer->Add(m_heapList, 1, wxEXPAND | wxALL, 5);
+    
+    heapSizer->Add(heapBoxSizer, 1, wxEXPAND | wxALL, 5);
+    heapPanel->SetSizer(heapSizer);
+    advNotebook->AddPage(heapPanel, "Heap");
+    
+    wxPanel* hollowPanel = new wxPanel(advNotebook, wxID_ANY);
+    wxBoxSizer* hollowSizer = new wxBoxSizer(wxVERTICAL);
+    
+    wxStaticBox* hollowBox = new wxStaticBox(hollowPanel, wxID_ANY, "Process Hollowing");
+    wxStaticBoxSizer* hollowBoxSizer = new wxStaticBoxSizer(hollowBox, wxVERTICAL);
+    
+    wxStaticText* hollowInfo = new wxStaticText(hollowPanel, wxID_ANY,
+        "Process Hollowing: Injeta um executavel em outro processo.\n"
+        "O processo alvo e criado suspenso, seu espaco de memoria e substituido\n"
+        "pelo payload, e a execucao e transferida para o novo codigo.\n\n"
+        "CUIDADO: Esta tecnica e comumente usada por malware. Use apenas para testes.");
+    hollowBoxSizer->Add(hollowInfo, 0, wxALL, 5);
+    
+    wxBoxSizer* hollowInputSizer = new wxBoxSizer(wxVERTICAL);
+    wxBoxSizer* targetSizer = new wxBoxSizer(wxHORIZONTAL);
+    targetSizer->Add(new wxStaticText(hollowPanel, wxID_ANY, "Target:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
+    m_hollowTarget = new wxTextCtrl(hollowPanel, wxID_ANY, "", wxDefaultPosition, wxSize(350, -1));
+    targetSizer->Add(m_hollowTarget, 1);
+    hollowInputSizer->Add(targetSizer, 0, wxEXPAND | wxBOTTOM, 5);
+    
+    wxBoxSizer* payloadSizer = new wxBoxSizer(wxHORIZONTAL);
+    payloadSizer->Add(new wxStaticText(hollowPanel, wxID_ANY, "Payload:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
+    m_hollowPayload = new wxTextCtrl(hollowPanel, wxID_ANY, "", wxDefaultPosition, wxSize(350, -1));
+    payloadSizer->Add(m_hollowPayload, 1);
+    hollowInputSizer->Add(payloadSizer, 0, wxEXPAND | wxBOTTOM, 5);
+    
+    hollowBoxSizer->Add(hollowInputSizer, 0, wxEXPAND | wxALL, 5);
+    
+    m_processHollowBtn = new wxButton(hollowPanel, 1104, "Execute Process Hollowing");
+    hollowBoxSizer->Add(m_processHollowBtn, 0, wxALL, 5);
+    
+    hollowSizer->Add(hollowBoxSizer, 0, wxEXPAND | wxALL, 5);
+    hollowPanel->SetSizer(hollowSizer);
+    advNotebook->AddPage(hollowPanel, "Hollowing");
+    
+    wxPanel* shellcodePanel = new wxPanel(advNotebook, wxID_ANY);
+    wxBoxSizer* scSizer = new wxBoxSizer(wxVERTICAL);
+    
+    wxStaticBox* scBox = new wxStaticBox(shellcodePanel, wxID_ANY, "Shellcode Execution");
+    wxStaticBoxSizer* scBoxSizer = new wxStaticBoxSizer(scBox, wxVERTICAL);
+    
+    wxStaticText* scInfo = new wxStaticText(shellcodePanel, wxID_ANY,
+        "Executa shellcode no processo alvo via RemoteThread.\n"
+        "O shellcode deve ser passado em hexadecimal (ex: 48 83 EC 28 C3).\n\n"
+        "AVISO: Shellcode arbitrario pode ser perigoso!");
+    scBoxSizer->Add(scInfo, 0, wxALL, 5);
+    
+    wxBoxSizer* scInputSizer = new wxBoxSizer(wxHORIZONTAL);
+    scInputSizer->Add(new wxStaticText(shellcodePanel, wxID_ANY, "Hex:"), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5);
+    m_shellcodeHex = new wxTextCtrl(shellcodePanel, wxID_ANY, "90", wxDefaultPosition, wxSize(450, -1));
+    scInputSizer->Add(m_shellcodeHex, 1);
+    scBoxSizer->Add(scInputSizer, 0, wxEXPAND | wxALL, 5);
+    
+    m_executeShellcodeBtn = new wxButton(shellcodePanel, 1105, "Execute Shellcode");
+    scBoxSizer->Add(m_executeShellcodeBtn, 0, wxALL, 5);
+    
+    scSizer->Add(scBoxSizer, 0, wxEXPAND | wxALL, 5);
+    shellcodePanel->SetSizer(scSizer);
+    advNotebook->AddPage(shellcodePanel, "Shellcode");
+    
+    wxPanel* etwPanel = new wxPanel(advNotebook, wxID_ANY);
+    wxBoxSizer* etwSizer = new wxBoxSizer(wxVERTICAL);
+    
+    wxStaticBox* etwBox = new wxStaticBox(etwPanel, wxID_ANY, "ETW Tracing");
+    wxStaticBoxSizer* etwBoxSizer = new wxStaticBoxSizer(etwBox, wxVERTICAL);
+    
+    wxStaticText* etwInfo = new wxStaticText(etwPanel, wxID_ANY,
+        "ETW (Event Tracing for Windows): Coleta eventos de sistema.\n"
+        "Syscalls: Rastreia chamadas de sistema do processo.");
+    etwBoxSizer->Add(etwInfo, 0, wxALL, 5);
+    
+    m_traceSyscallsBtn = new wxButton(etwPanel, 1106, "Trace Syscalls");
+    etwBoxSizer->Add(m_traceSyscallsBtn, 0, wxALL, 5);
+    
+    m_etwList = new wxListView(etwPanel, wxID_ANY, wxDefaultPosition, wxSize(-1, 200),
+        wxLC_REPORT | wxLC_SINGLE_SEL);
+    m_etwList->InsertColumn(0, "PID", wxLIST_FORMAT_LEFT, 60);
+    m_etwList->InsertColumn(1, "TID", wxLIST_FORMAT_LEFT, 60);
+    m_etwList->InsertColumn(2, "Provider", wxLIST_FORMAT_LEFT, 150);
+    m_etwList->InsertColumn(3, "Event", wxLIST_FORMAT_LEFT, 150);
+    m_etwList->InsertColumn(4, "Timestamp", wxLIST_FORMAT_LEFT, 120);
+    m_etwList->InsertColumn(5, "Data", wxLIST_FORMAT_LEFT, 300);
+    etwBoxSizer->Add(m_etwList, 1, wxEXPAND | wxALL, 5);
+    
+    etwSizer->Add(etwBoxSizer, 1, wxEXPAND | wxALL, 5);
+    etwPanel->SetSizer(etwSizer);
+    advNotebook->AddPage(etwPanel, "ETW");
+    
+    parent->SetSizer(mainSizer);
 }
 
 void MainFrame::createSettingsTab(wxPanel* parent) {
@@ -1166,4 +1362,168 @@ void MainFrame::updatePointerResultsList() {
     status << "Found " << m_results.size() << " pointer paths";
     m_statusText->SetLabel(status.str());
     updateLog(status.str());
+}
+
+void MainFrame::onDetectDebuggers(wxCommandEvent& event) {
+    m_debuggerList->DeleteAllItems();
+    
+    auto detections = AdvancedTools::detectAllDebuggers();
+    for (size_t i = 0; i < detections.size(); i++) {
+        const auto& d = detections[i];
+        m_debuggerList->InsertItem(i, d.method);
+        m_debuggerList->SetItem(i, 1, d.detected ? "YES" : "No");
+        m_debuggerList->SetItem(i, 2, d.details);
+    }
+    
+    updateLog("Debugger detection complete");
+}
+
+void MainFrame::onPatchAntiDebug(wxCommandEvent& event) {
+    if (AdvancedTools::patchAntiDebug()) {
+        updateLog("Anti-debug patches applied");
+        wxMessageBox("Anti-debug patches applied successfully!", "Success", wxOK | wxICON_INFORMATION);
+    } else {
+        updateLog("Failed to patch anti-debug");
+        wxMessageBox("Failed to apply patches!", "Error", wxOK | wxICON_ERROR);
+    }
+}
+
+void MainFrame::onDetectHooks(wxCommandEvent& event) {
+    m_hookList->DeleteAllItems();
+    
+    auto hooks = AdvancedTools::detectAllHooks();
+    for (size_t i = 0; i < hooks.size(); i++) {
+        const auto& h = hooks[i];
+        m_hookList->InsertItem(i, h.moduleName);
+        m_hookList->SetItem(i, 1, h.functionName);
+        m_hookList->SetItem(i, 2, h.hookType);
+        std::ostringstream orig, hooked;
+        orig << "0x" << std::hex << h.originalAddress;
+        hooked << "0x" << std::hex << h.hookedAddress;
+        m_hookList->SetItem(i, 3, orig.str());
+        m_hookList->SetItem(i, 4, hooked.str());
+        m_hookList->SetItem(i, 5, h.hookDetails);
+    }
+    
+    std::ostringstream status;
+    status << "Found " << hooks.size() << " hooks";
+    updateLog(status.str());
+}
+
+void MainFrame::onAnalyzeHeaps(wxCommandEvent& event) {
+    m_heapList->DeleteAllItems();
+    
+    if (!m_memoryEngine) {
+        updateLog("Open a process first!");
+        return;
+    }
+    
+    auto heaps = AdvancedTools::analyzeHeaps(m_processManager.getHandle());
+    int idx = 0;
+    for (const auto& heap : heaps) {
+        std::ostringstream addr, size;
+        addr << "0x" << std::hex << heap.baseAddress;
+        size << "0x" << std::hex << heap.totalSize;
+        
+        if (idx < 100) {
+            m_heapList->InsertItem(idx, addr.str());
+            m_heapList->SetItem(idx, 1, size.str());
+            m_heapList->SetItem(idx, 2, "");
+            m_heapList->SetItem(idx, 3, "");
+            m_heapList->SetItem(idx, 4, "");
+            idx++;
+        }
+    }
+    
+    updateLog("Heap analysis complete");
+}
+
+void MainFrame::onProcessHollow(wxCommandEvent& event) {
+    wxString target = m_hollowTarget->GetValue();
+    wxString payload = m_hollowPayload->GetValue();
+    
+    if (target.IsEmpty() || payload.IsEmpty()) {
+        wxMessageBox("Please specify both target and payload paths!", "Error", wxOK | wxICON_ERROR);
+        return;
+    }
+    
+    int ret = wxMessageBox(
+        "Process Hollowing will inject one executable into another.\n"
+        "This technique is commonly used by malware.\n\n"
+        "Are you sure you want to proceed?",
+        "Warning", wxYES_NO | wxICON_WARNING);
+    
+    if (ret != wxYES) return;
+    
+    auto result = AdvancedTools::processHollow(target.ToStdString(), payload.ToStdString());
+    
+    if (result.success) {
+        std::ostringstream msg;
+        msg << "Process hollowing successful! New PID: " << result.newPID;
+        updateLog(msg.str());
+        wxMessageBox(msg.str(), "Success", wxOK | wxICON_INFORMATION);
+    } else {
+        updateLog("Process hollowing failed: " + result.message);
+        wxMessageBox("Process hollowing failed: " + result.message, "Error", wxOK | wxICON_ERROR);
+    }
+}
+
+void MainFrame::onExecuteShellcode(wxCommandEvent& event) {
+    if (!m_memoryEngine) {
+        updateLog("Open a process first!");
+        return;
+    }
+    
+    wxString hexStr = m_shellcodeHex->GetValue();
+    std::vector<uint8_t> shellcode;
+    
+    std::istringstream iss(hexStr.ToStdString());
+    std::string byte;
+    while (iss >> std::hex >> byte) {
+        shellcode.push_back(static_cast<uint8_t>(std::stoi(byte, nullptr, 16)));
+    }
+    
+    if (shellcode.empty()) {
+        wxMessageBox("Invalid shellcode hex!", "Error", wxOK | wxICON_ERROR);
+        return;
+    }
+    
+    int ret = wxMessageBox(
+        "Executing arbitrary shellcode can be dangerous!\n\n"
+        "Are you sure you want to proceed?",
+        "Warning", wxYES_NO | wxICON_WARNING);
+    
+    if (ret != wxYES) return;
+    
+    bool success = AdvancedTools::injectShellcodeRemoteThread(m_processManager.getHandle(), shellcode);
+    
+    if (success) {
+        updateLog("Shellcode executed successfully");
+        wxMessageBox("Shellcode executed!", "Success", wxOK | wxICON_INFORMATION);
+    } else {
+        updateLog("Shellcode execution failed");
+        wxMessageBox("Shellcode execution failed!", "Error", wxOK | wxICON_ERROR);
+    }
+}
+
+void MainFrame::onTraceSyscalls(wxCommandEvent& event) {
+    m_etwList->DeleteAllItems();
+    
+    if (!m_memoryEngine) {
+        updateLog("Open a process first!");
+        return;
+    }
+    
+    auto events = AdvancedTools::traceSyscalls(m_processManager.getProcessId(), 5000);
+    for (size_t i = 0; i < events.size(); i++) {
+        const auto& e = events[i];
+        m_etwList->InsertItem(i, std::to_string(e.pid));
+        m_etwList->SetItem(i, 1, std::to_string(e.tid));
+        m_etwList->SetItem(i, 2, e.providerName);
+        m_etwList->SetItem(i, 3, e.eventName);
+        m_etwList->SetItem(i, 4, std::to_string(e.timestamp));
+        m_etwList->SetItem(i, 5, e.data);
+    }
+    
+    updateLog("ETW tracing complete");
 }

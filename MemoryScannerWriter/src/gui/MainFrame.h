@@ -17,6 +17,7 @@
 #include "../engine/ProcessManager.h"
 #include "../engine/MemoryEngine.h"
 #include "../engine/WindowsAPI.h"
+#include "../engine/AdvancedTools.h"
 #include "../models/ScanResult.h"
 
 class MainFrame : public wxFrame {
@@ -29,6 +30,7 @@ private:
     void createPointerTab(wxPanel* parent);
     void createDumpTab(wxPanel* parent);
     void createToolsTab(wxPanel* parent);
+    void createAdvancedTab(wxPanel* parent);
     void createSettingsTab(wxPanel* parent);
     void createThreadsTab(wxPanel* parent);
     void createModulesTab(wxPanel* parent);
@@ -82,6 +84,14 @@ private:
     void onFreeMemory(wxCommandEvent& event);
     
     void onRefreshPEB(wxCommandEvent& event);
+    
+    void onDetectDebuggers(wxCommandEvent& event);
+    void onPatchAntiDebug(wxCommandEvent& event);
+    void onDetectHooks(wxCommandEvent& event);
+    void onAnalyzeHeaps(wxCommandEvent& event);
+    void onProcessHollow(wxCommandEvent& event);
+    void onExecuteShellcode(wxCommandEvent& event);
+    void onTraceSyscalls(wxCommandEvent& event);
     
     void updateProgress(int percent);
     
@@ -156,6 +166,21 @@ private:
     
     wxTextCtrl* m_pebInfo;
     wxButton* m_refreshPEBBtn;
+    
+    wxListView* m_debuggerList;
+    wxButton* m_detectDebuggersBtn;
+    wxButton* m_patchAntiDebugBtn;
+    wxListView* m_hookList;
+    wxButton* m_detectHooksBtn;
+    wxListView* m_heapList;
+    wxButton* m_analyzeHeapsBtn;
+    wxTextCtrl* m_hollowTarget;
+    wxTextCtrl* m_hollowPayload;
+    wxButton* m_processHollowBtn;
+    wxTextCtrl* m_shellcodeHex;
+    wxButton* m_executeShellcodeBtn;
+    wxListView* m_etwList;
+    wxButton* m_traceSyscallsBtn;
     
     wxTextCtrl* m_logBox;
     

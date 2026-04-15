@@ -68,6 +68,44 @@ Aplicativo GUI para escanear e modificar valores na memória de processos em exe
 - **Loaded Modules** — Lista de módulos carregados
 - **Being Debugged** — Flag que indica se está sendo debugado
 
+### Advanced (Tab)
+Técnicas avançadas de debugging e análise de memória.
+
+#### Debugger Detection
+- **Multi-method detection** — IsDebuggerPresent, CheckRemoteDebuggerPresent
+- **NtQueryInformationProcess** — DebugPort, DebugObjectHandle, DebugFlags
+- **PEB.BeingDebugged** — Flag no Process Environment Block
+- **Heap Flags** — Detecta debuggers pelo heap flags
+- **Timing Checks** — Detecta breakpoints por slowdown
+- **Window Class** — Detecta janelas de OllyDbg, IDA, x64dbg
+- **Patch Anti-Debug** — Aplica patches para evadir detection
+
+#### Hooking Detection
+- **IAT Hooks** — Detecta hooks na Import Address Table
+- **Inline Hooks** — Detecta JMP/CALL inline no código
+- Útil para identificar DLLs injetadas ou code hooks
+
+#### Heap Analysis
+- **Lista blocos de heap** do processo
+- **Detecta corrupção** de heap
+- **Mostra flags** de busy/free
+
+#### Process Hollowing
+- **Injeta executável em outro processo**
+- Cria processo suspenso, substitui memória, transfere execução
+- Útil para entender técnicas de injeção de código
+- **AVISO**: Técnica comum em malware - use apenas para testes
+
+#### Shellcode Execution
+- **Executa shellcode** no processo alvo via RemoteThread
+- **Formato**: Hex bytes (ex: `48 83 EC 28 C3`)
+- Aloca, escreve e executa shellcode
+
+#### ETW Tracing
+- **Event Tracing for Windows**
+- Coleta eventos de sistema
+- Útil para análise de chamadas de sistema
+
 ## Requisitos
 
 - **Windows 10/11** (64-bit)
@@ -209,6 +247,38 @@ O arquivo será salvo no diretório do executável.
   - **Blacklist**: Pula módulos listados
   - Útil para pular `ntdll.dll`, `kernel32.dll`, etc.
 
+#### Tab Advanced
+
+##### Debugger Detection
+1. Clique em **"Detect Debuggers"**
+2. Veja todos os métodos de detecção
+3. Use **"Patch Anti-Debug"** para tentar evadir
+
+##### Hooking Detection
+1. Clique em **"Detect All Hooks"**
+2. Veja IAT hooks e inline hooks encontrados
+3. Analise endereços originais vs hookeados
+
+##### Heap Analysis
+1. Selecione um processo
+2. Clique em **"Analyze Heaps"**
+3. Veja blocos de heap e tamanhos
+
+##### Process Hollowing
+1. Digite o caminho do executável alvo
+2. Digite o caminho do payload
+3. Clique em **"Execute Process Hollowing"**
+4. **CUIDADO**: Técnica perigosa!
+
+##### Shellcode Execution
+1. Digite o shellcode em hex (ex: `90 90`)
+2. Clique em **"Execute Shellcode"**
+3. O shellcode é executado no processo alvo
+
+##### ETW Tracing
+1. Clique em **"Trace Syscalls"**
+2. Veja eventos de sistema capturados
+
 ## Estrutura do Projeto
 
 ```
@@ -225,7 +295,11 @@ MemoryScannerWriter/
 │   │   ├── ProcessManager.h   # Lista e abre processos
 │   │   ├── ProcessManager.cpp
 │   │   ├── MemoryEngine.h     # RPM/WPM e scanner
-│   │   └── MemoryEngine.cpp
+│   │   ├── MemoryEngine.cpp
+│   │   ├── WindowsAPI.h       # SE_DEBUG, threads, modules, PEB
+│   │   ├── WindowsAPI.cpp
+│   │   ├── AdvancedTools.h   # Anti-debug, hooks, hollowing, shellcode
+│   │   └── AdvancedTools.cpp
 │   └── models/
 │       ├── ScanResult.h    # Modelo de resultado de scan
 │       └── ScanResult.cpp
