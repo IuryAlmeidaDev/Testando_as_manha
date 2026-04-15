@@ -13,8 +13,10 @@
 #include <wx/stattext.h>
 #include <wx/checkbox.h>
 #include <wx/spinctrl.h>
+#include <wx/listbox.h>
 #include "../engine/ProcessManager.h"
 #include "../engine/MemoryEngine.h"
+#include "../engine/WindowsAPI.h"
 #include "../models/ScanResult.h"
 
 class MainFrame : public wxFrame {
@@ -28,8 +30,16 @@ private:
     void createDumpTab(wxPanel* parent);
     void createToolsTab(wxPanel* parent);
     void createSettingsTab(wxPanel* parent);
+    void createThreadsTab(wxPanel* parent);
+    void createModulesTab(wxPanel* parent);
+    void createBreakpointsTab(wxPanel* parent);
+    void createMemoryTab(wxPanel* parent);
+    void createInfoTab(wxPanel* parent);
     
     void populateProcessList();
+    void populateThreadList();
+    void populateModuleList();
+    void populateMemoryRegionList();
     void updateResultsList();
     void updatePointerResultsList();
     void updateLog(const std::string& message);
@@ -49,11 +59,29 @@ private:
     void onCopyAddress(wxCommandEvent& event);
     void onWriteValue(wxCommandEvent& event);
     void onPrecisionChanged(wxSpinEvent& event);
-    void onHotkey(wxKeyEvent& event);
     
     void onModuleWhitelistAdd(wxCommandEvent& event);
     void onModuleBlacklistAdd(wxCommandEvent& event);
     void onModuleFilterClear(wxCommandEvent& event);
+    
+    void onRefreshThreads(wxCommandEvent& event);
+    void onSuspendThread(wxCommandEvent& event);
+    void onResumeThread(wxCommandEvent& event);
+    void onSuspendProcess(wxCommandEvent& event);
+    void onResumeProcess(wxCommandEvent& event);
+    
+    void onRefreshModules(wxCommandEvent& event);
+    void onShowModuleExports(wxCommandEvent& event);
+    
+    void onSetBreakpoint(wxCommandEvent& event);
+    void onClearBreakpoint(wxCommandEvent& event);
+    void onRefreshBreakpoints(wxCommandEvent& event);
+    
+    void onChangeProtection(wxCommandEvent& event);
+    void onAllocateMemory(wxCommandEvent& event);
+    void onFreeMemory(wxCommandEvent& event);
+    
+    void onRefreshPEB(wxCommandEvent& event);
     
     void updateProgress(int percent);
     
@@ -102,6 +130,33 @@ private:
     
     wxSpinCtrl* m_floatPrecision;
     
+    wxListView* m_threadsList;
+    wxButton* m_refreshThreadsBtn;
+    wxButton* m_suspendThreadBtn;
+    wxButton* m_resumeThreadBtn;
+    wxButton* m_suspendProcessBtn;
+    wxButton* m_resumeProcessBtn;
+    
+    wxListView* m_modulesList;
+    wxButton* m_refreshModulesBtn;
+    wxButton* m_showExportsBtn;
+    
+    wxListView* m_breakpointsList;
+    wxButton* m_setBreakpointBtn;
+    wxButton* m_clearBreakpointBtn;
+    wxButton* m_refreshBreakpointsBtn;
+    wxComboBox* m_breakpointType;
+    wxComboBox* m_breakpointLength;
+    
+    wxListView* m_memoryList;
+    wxButton* m_refreshMemoryBtn;
+    wxButton* m_changeProtectionBtn;
+    wxButton* m_allocateMemoryBtn;
+    wxButton* m_freeMemoryBtn;
+    
+    wxTextCtrl* m_pebInfo;
+    wxButton* m_refreshPEBBtn;
+    
     wxTextCtrl* m_logBox;
     
     ProcessManager m_processManager;
@@ -109,6 +164,7 @@ private:
     std::vector<ScanResult> m_results;
     bool m_initialScanDone;
     bool m_aobMode;
+    DWORD m_selectedTID;
     
     wxDECLARE_EVENT_TABLE();
 };

@@ -12,6 +12,7 @@ add_executable(MemoryScannerWriter
     src/gui/MainFrame.cpp
     src/engine/ProcessManager.cpp
     src/engine/MemoryEngine.cpp
+    src/engine/WindowsAPI.cpp
     src/models/ScanResult.cpp
 )
 

@@ -41,6 +41,33 @@ Aplicativo GUI para escanear e modificar valores na memória de processos em exe
 - **Module Filters** — Whitelist/Blacklist de módulos para escanear
 - **Log de operações** — Registro de todas as ações
 
+### Thread Viewer (Tab)
+- **Lista todas as threads** do processo selecionado
+- **TID, Prioridade, Estado, TEB Address**
+- **Suspend/Resume** — Pausa threads individuais ou todo o processo
+
+### Module Viewer (Tab)
+- **Lista todos os módulos** (DLLs/EXEs) carregados
+- **Base Address, Size, Path completo**
+- **Useful for** — Identificar módulos do jogo/app
+
+### Hardware Breakpoints (Tab)
+- **Debug Registers (DR0-DR3)** — Breakpoints a nível de hardware
+- **Tipos** — Execute, Write, Read/Write
+- **Limite** — 4 breakpoints simultâneos por thread
+
+### Memory Regions (Tab)
+- **Lista todas as regiões** de memória do processo
+- **Proteção, Estado, Tipo** — PAGE_READWRITE, MEM_COMMIT, etc.
+- **Change Protection** — Altera flags de proteção
+- **Allocate/Free** — Aloca ou libera memória no processo
+
+### PEB Info (Tab)
+- **Process Environment Block** — Informações do sistema sobre o processo
+- **Command Line, Current Directory, Window Title**
+- **Loaded Modules** — Lista de módulos carregados
+- **Being Debugged** — Flag que indica se está sendo debugado
+
 ## Requisitos
 
 - **Windows 10/11** (64-bit)
