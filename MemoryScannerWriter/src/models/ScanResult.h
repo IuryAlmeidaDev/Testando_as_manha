@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <vector>
 
 enum class DataType {
     INT8,
@@ -10,7 +11,22 @@ enum class DataType {
     FLOAT,
     DOUBLE,
     BYTE,
-    STRING
+    STRING,
+    WSTRING,
+    POINTER,
+    BYTEARRAY
+};
+
+struct ByteArray {
+    std::vector<uint8_t> bytes;
+    std::string mask;
+
+    ByteArray() {}
+    ByteArray(const std::string& hexStr);
+    
+    static ByteArray fromHexWithMask(const std::string& pattern);
+    bool matches(const uint8_t* data, size_t len) const;
+    size_t size() const { return bytes.size(); }
 };
 
 struct ScanResult {
@@ -19,28 +35,39 @@ struct ScanResult {
     double numericValue;
     DataType type;
     size_t byteSize;
+    ByteArray aobPattern;
+    std::string label;
+    std::string moduleName;
+
+    ScanResult() : address(0), numericValue(0), type(DataType::INT32), byteSize(0) {}
 
     ScanResult(uintptr_t addr, DataType t, double numVal = 0, const std::string& strVal = "")
         : address(addr), type(t), numericValue(numVal), stringValue(strVal) {
+        byteSize = calculateSize(t);
+    }
+
+    ScanResult(uintptr_t addr, const ByteArray& pattern)
+        : address(addr), type(DataType::BYTEARRAY), numericValue(0), aobPattern(pattern) {
+        byteSize = pattern.size();
+    }
+
+    static size_t calculateSize(DataType t) {
         switch (t) {
             case DataType::INT8:
             case DataType::BYTE:
-                byteSize = 1;
-                break;
+                return 1;
             case DataType::INT16:
-                byteSize = 2;
-                break;
+            case DataType::WSTRING:
+                return 2;
             case DataType::INT32:
             case DataType::FLOAT:
-                byteSize = 4;
-                break;
+            case DataType::POINTER:
+                return 4;
             case DataType::INT64:
             case DataType::DOUBLE:
-                byteSize = 8;
-                break;
-            case DataType::STRING:
-                byteSize = strVal.length() + 1;
-                break;
+                return 8;
+            default:
+                return 0;
         }
     }
 
